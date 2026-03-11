@@ -1,19 +1,15 @@
 """
 Tool 3: Outreach Automated Sender (Execution)
 Generates a hyper-personalized email from research + signals,
-then automatically dispatches it via Resend.
-Primary: Claude 3.5 Sonnet via AIML API
+then automatically dispatches it via Brevo (formerly Sendinblue).
+Primary LLM: GPT-4o via AIML API
 Fallback: Google Gemini (free tier)
 """
 
 import json
+import httpx
 from openai import AsyncOpenAI
 import google.generativeai as genai
-
-try:
-    import resend
-except ImportError:
-    resend = None
 
 
 EMAIL_SYSTEM_PROMPT = """You are an elite B2B copywriter at FireReach. You write emails that feel 
@@ -125,12 +121,12 @@ async def generate_email(
     prompt = _build_email_prompt(account_brief, signals, icp, recipient_email)
     llm_used = ""
 
-    # Try primary: Claude via AIML API
+    # Try primary: GPT-4o via AIML API
     if aiml_key:
         try:
             raw_text = await _generate_email_claude(prompt, aiml_key, aiml_base_url, aiml_model)
             result = _parse_email_json(raw_text)
-            result["llm_used"] = "Claude 3.5 Sonnet (via AIML API)"
+            result["llm_used"] = f"{aiml_model} (via AIML API)"
             return result
         except Exception as e:
             print(f"⚠️ AIML API failed for email gen: {e}. Falling back to Gemini...")
@@ -153,42 +149,51 @@ async def send_email(
     body: str,
     recipient_email: str,
     sender_email: str,
-    resend_key: str,
+    brevo_key: str,
 ) -> dict:
-    """Send the email via Resend API."""
-    if not resend_key:
+    """Send the email via Brevo (Sendinblue) API."""
+    if not brevo_key:
         return {
             "status": "skipped",
-            "message": "Resend API key not configured. Email generated but not sent.",
+            "message": "Brevo API key not configured. Email generated but not sent.",
             "subject": subject,
             "body": body,
-        }
-
-    if resend is None:
-        return {
-            "status": "error",
-            "message": "Resend package not installed.",
         }
 
     try:
-        resend.api_key = resend_key
+        async with httpx.AsyncClient() as client:
+            response = await client.post(
+                "https://api.brevo.com/v3/smtp/email",
+                headers={
+                    "api-key": brevo_key,
+                    "Content-Type": "application/json",
+                    "accept": "application/json",
+                },
+                json={
+                    "sender": {"email": sender_email},
+                    "to": [{"email": recipient_email}],
+                    "subject": subject,
+                    "htmlContent": body.replace("\n", "<br>"),
+                },
+                timeout=30.0,
+            )
 
-        params = {
-            "from": sender_email,
-            "to": [recipient_email],
-            "subject": subject,
-            "html": body.replace("\n", "<br>"),
-        }
-
-        email_response = resend.Emails.send(params)
-
-        return {
-            "status": "sent",
-            "message": f"Email sent successfully to {recipient_email}",
-            "email_id": email_response.get("id", "unknown") if isinstance(email_response, dict) else str(email_response),
-            "subject": subject,
-            "body": body,
-        }
+            if response.status_code in (200, 201):
+                data = response.json()
+                return {
+                    "status": "sent",
+                    "message": f"Email sent successfully to {recipient_email}",
+                    "email_id": data.get("messageId", "unknown"),
+                    "subject": subject,
+                    "body": body,
+                }
+            else:
+                return {
+                    "status": "error",
+                    "message": f"Brevo API error {response.status_code}: {response.text}",
+                    "subject": subject,
+                    "body": body,
+                }
 
     except Exception as e:
         return {
@@ -206,15 +211,16 @@ async def tool_outreach_automated_sender(
     recipient_email: str,
     aiml_key: str = "",
     aiml_base_url: str = "https://api.aimlapi.com/v1",
-    aiml_model: str = "claude-3-5-sonnet-latest",
+    aiml_model: str = "gpt-4o",
     gemini_key: str = "",
-    resend_key: str = "",
-    sender_email: str = "onboarding@resend.dev",
+    brevo_key: str = "",
+    sender_email: str = "firereach@example.com",
 ) -> dict:
     """
     Full outreach tool: Generate email + Send it.
-    Primary LLM: Claude 3.5 Sonnet (AIML API)
+    Primary LLM: GPT-4o (AIML API)
     Fallback LLM: Google Gemini (free)
+    Email: Brevo (formerly Sendinblue)
     """
     # Step 1: Generate the email
     email = await generate_email(
@@ -237,7 +243,7 @@ async def tool_outreach_automated_sender(
         body=email["body"],
         recipient_email=recipient_email,
         sender_email=sender_email,
-        resend_key=resend_key,
+        brevo_key=brevo_key,
     )
 
     # Include which LLM was used

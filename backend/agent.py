@@ -1,7 +1,7 @@
 """
 FireReach Agent Orchestrator
 Implements sequential function-calling: Signal Capture → Research → Automated Delivery.
-Primary LLM: Claude 3.5 Sonnet via AIML API
+Primary LLM: GPT-4o via AIML API
 Fallback LLM: Google Gemini (free tier)
 """
 
@@ -12,7 +12,7 @@ from config import (
     AIML_API_KEY, AIML_BASE_URL, AIML_MODEL,
     GEMINI_API_KEY,
     FINNHUB_API_KEY, GNEWS_API_KEY,
-    RESEND_API_KEY, SENDER_EMAIL,
+    BREVO_API_KEY, SENDER_EMAIL,
 )
 
 
@@ -104,7 +104,7 @@ async def run_agent_pipeline(
         aiml_base_url=AIML_BASE_URL,
         aiml_model=AIML_MODEL,
         gemini_key=GEMINI_API_KEY,
-        resend_key=RESEND_API_KEY,
+        brevo_key=BREVO_API_KEY,
         sender_email=SENDER_EMAIL,
     )
 

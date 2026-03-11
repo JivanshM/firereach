@@ -24,7 +24,9 @@ User Input (ICP + Company + Email)
               │ Structured signals JSON
               ▼
 ┌──────────────────────────────┐
-│  2. tool_research_analyst    │  ← AI-powered (Gemini 2.0 Flash)
+│  2. tool_research_analyst    │  ← AI-powered (GPT-4o via AIML)
+│     - Web search (DuckDuckGo)│
+│     - Company site scraping  │
 │     - Analyzes signals       │
 │     - Maps to user ICP       │
 │     - Generates Account Brief│
@@ -41,6 +43,7 @@ User Input (ICP + Company + Email)
 
 **Key Design Principles:**
 - **Signal → Research → Send**: The agent NEVER sends without researching first.
+- **Active Web Research**: Tool 2 performs its own DuckDuckGo searches and company website scraping to enrich the analysis beyond API-only data.
 - **Zero-Template Policy**: Every email explicitly references captured signals.
 - **Deterministic Signals**: Tool 1 uses only API data — the LLM cannot "guess" signals.
 - **Automated Execution**: The send action is triggered automatically once research is complete.
@@ -86,8 +89,8 @@ User Input (ICP + Company + Email)
 
 ### 2. `tool_research_analyst`
 
-**Type:** AI-powered (Gemini 2.0 Flash)  
-**Purpose:** Generate a 2-paragraph Account Brief from signals + ICP.
+**Type:** AI-powered + Active Web Research  
+**Purpose:** Perform independent internet research (DuckDuckGo search + company website scraping), then combine with API signals and ICP to generate a 2-paragraph Account Brief.
 
 ```json
 {
@@ -95,15 +98,26 @@ User Input (ICP + Company + Email)
   "parameters": {
     "icp": { "type": "string", "description": "User's Ideal Customer Profile" },
     "signals": { "type": "object", "description": "Output from tool_signal_harvester" },
+    "company": { "type": "string", "description": "Target company name (for web search)" },
+    "domain": { "type": "string", "description": "Company domain (for website scraping)" },
     "gemini_key": { "type": "string", "description": "Gemini API key" }
   },
   "returns": {
     "account_brief": "string (2 paragraphs)",
     "status": "success | error",
-    "icp_used": "string"
+    "icp_used": "string",
+    "web_research_performed": "boolean"
   }
 }
 ```
+
+**Research Data Sources:**
+| Source | Method | Purpose |
+|---|---|---|
+| DuckDuckGo (general) | `"{company}" company news funding` | Broad company context |
+| DuckDuckGo (ICP-aligned) | `"{company}" {icp_keywords}` | ICP-specific intelligence |
+| Company website | Homepage + /about scraping | Mission, products, positioning |
+| API signals | Passed from tool_signal_harvester | Financial, hiring, news, tech data |
 
 ### 3. `tool_outreach_automated_sender`
 
@@ -171,6 +185,8 @@ STRICT RULES:
 
 - **Backend:** FastAPI (Python) with async tool execution
 - **Frontend:** Vite + React with SSE streaming
-- **LLM:** Google Gemini 2.0 Flash (function calling)
+- **Primary LLM:** GPT-4o via AIML API
+- **Fallback LLM:** Google Gemini 2.0 Flash
+- **Web Research:** DuckDuckGo search + BeautifulSoup scraping
 - **Email:** Resend API (100 free emails/day)
-- **Signal APIs:** Finnhub, GNews, direct ATS endpoints
+- **Signal APIs:** Finnhub, GNews, direct ATS endpoints (Greenhouse, Lever)

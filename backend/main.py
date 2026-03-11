@@ -102,7 +102,7 @@ async def run_outreach_stream(request: OutreachRequest):
         from tools.signal_harvester import tool_signal_harvester
         from tools.research_analyst import tool_research_analyst
         from tools.outreach_sender import tool_outreach_automated_sender
-        from config import GEMINI_API_KEY, FINNHUB_API_KEY, GNEWS_API_KEY, RESEND_API_KEY, SENDER_EMAIL
+        from config import AIML_API_KEY, AIML_BASE_URL, AIML_MODEL, GEMINI_API_KEY, FINNHUB_API_KEY, GNEWS_API_KEY, RESEND_API_KEY, SENDER_EMAIL
 
         # Step 1
         yield f"data: {json.dumps({'step': 'signal_harvester', 'status': 'running', 'description': 'Capturing live buyer signals...'})}\n\n"
@@ -117,11 +117,16 @@ async def run_outreach_stream(request: OutreachRequest):
         yield f"data: {json.dumps({'step': 'signal_harvester', 'status': 'completed', 'data': signals_result}, default=str)}\n\n"
 
         # Step 2
-        yield f"data: {json.dumps({'step': 'research_analyst', 'status': 'running', 'description': 'Analyzing signals and generating Account Brief...'})}\n\n"
+        yield f"data: {json.dumps({'step': 'research_analyst', 'status': 'running', 'description': 'Performing web research & analyzing signals...'})}\n\n"
 
         research_result = await tool_research_analyst(
             icp=request.icp,
             signals=signals_result.get("signals", {}),
+            company=request.company,
+            domain=request.domain,
+            aiml_key=AIML_API_KEY,
+            aiml_base_url=AIML_BASE_URL,
+            aiml_model=AIML_MODEL,
             gemini_key=GEMINI_API_KEY,
         )
 
@@ -135,6 +140,9 @@ async def run_outreach_stream(request: OutreachRequest):
             signals=signals_result.get("signals", {}),
             icp=request.icp,
             recipient_email=request.recipient_email,
+            aiml_key=AIML_API_KEY,
+            aiml_base_url=AIML_BASE_URL,
+            aiml_model=AIML_MODEL,
             gemini_key=GEMINI_API_KEY,
             resend_key=RESEND_API_KEY,
             sender_email=SENDER_EMAIL,

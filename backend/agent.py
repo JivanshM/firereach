@@ -1,14 +1,19 @@
 """
 FireReach Agent Orchestrator
 Implements sequential function-calling: Signal Capture → Research → Automated Delivery.
-Uses Gemini for reasoning, but tool execution is deterministic where required.
+Primary LLM: Claude 3.5 Sonnet via AIML API
+Fallback LLM: Google Gemini (free tier)
 """
 
-import json
 from tools.signal_harvester import tool_signal_harvester
 from tools.research_analyst import tool_research_analyst
 from tools.outreach_sender import tool_outreach_automated_sender
-from config import GEMINI_API_KEY, FINNHUB_API_KEY, GNEWS_API_KEY, RESEND_API_KEY, SENDER_EMAIL
+from config import (
+    AIML_API_KEY, AIML_BASE_URL, AIML_MODEL,
+    GEMINI_API_KEY,
+    FINNHUB_API_KEY, GNEWS_API_KEY,
+    RESEND_API_KEY, SENDER_EMAIL,
+)
 
 
 async def run_agent_pipeline(
@@ -23,15 +28,8 @@ async def run_agent_pipeline(
     
     Sequential flow:
     1. tool_signal_harvester → deterministic data fetching
-    2. tool_research_analyst → AI analysis
+    2. tool_research_analyst → AI analysis (Claude → Gemini fallback)
     3. tool_outreach_automated_sender → AI email gen + automated send
-    
-    Args:
-        icp: User's Ideal Customer Profile description
-        company: Target company name
-        domain: Target company's website domain
-        recipient_email: Email to send the outreach to
-        on_step: Optional async callback(step_name, step_data) for streaming updates
     """
     result = {
         "steps": [],
@@ -65,7 +63,7 @@ async def run_agent_pipeline(
     step2 = {
         "tool": "tool_research_analyst",
         "status": "running",
-        "description": "Analyzing signals and generating Account Brief...",
+        "description": "Performing web research & analyzing signals with Claude 3.5...",
     }
     if on_step:
         await on_step("research_analyst", step2)
@@ -73,6 +71,11 @@ async def run_agent_pipeline(
     research_result = await tool_research_analyst(
         icp=icp,
         signals=signals_result.get("signals", {}),
+        company=company,
+        domain=domain,
+        aiml_key=AIML_API_KEY,
+        aiml_base_url=AIML_BASE_URL,
+        aiml_model=AIML_MODEL,
         gemini_key=GEMINI_API_KEY,
     )
 
@@ -87,7 +90,7 @@ async def run_agent_pipeline(
     step3 = {
         "tool": "tool_outreach_automated_sender",
         "status": "running",
-        "description": "Generating and sending personalized email...",
+        "description": "Generating hyper-personalized email and sending...",
     }
     if on_step:
         await on_step("outreach_sender", step3)
@@ -97,6 +100,9 @@ async def run_agent_pipeline(
         signals=signals_result.get("signals", {}),
         icp=icp,
         recipient_email=recipient_email,
+        aiml_key=AIML_API_KEY,
+        aiml_base_url=AIML_BASE_URL,
+        aiml_model=AIML_MODEL,
         gemini_key=GEMINI_API_KEY,
         resend_key=RESEND_API_KEY,
         sender_email=SENDER_EMAIL,
@@ -117,6 +123,7 @@ async def run_agent_pipeline(
         "research_generated": research_result.get("status") == "success",
         "email_subject": outreach_result.get("subject", "N/A"),
         "email_status": outreach_result.get("status", "unknown"),
+        "llm_used": outreach_result.get("llm_used", research_result.get("llm_used", "unknown")),
     }
 
     return result

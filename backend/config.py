@@ -3,7 +3,12 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-# LLM
+# LLM — Primary: Claude 3.5 Sonnet via AIML API
+AIML_API_KEY = os.getenv("AIML_API_KEY", "")
+AIML_BASE_URL = os.getenv("AIML_BASE_URL", "https://api.aimlapi.com/v1")
+AIML_MODEL = os.getenv("AIML_MODEL", "gpt-4o")
+
+# LLM — Fallback: Google Gemini (free tier)
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "")
 
 # Signal Harvester APIs

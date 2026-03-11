@@ -2,10 +2,13 @@
 Tool 3: Outreach Automated Sender (Execution)
 Generates a hyper-personalized email from research + signals,
 then automatically dispatches it via Resend.
+Primary: Claude 3.5 Sonnet via AIML API
+Fallback: Google Gemini (free tier)
 """
 
-import google.generativeai as genai
 import json
+from openai import AsyncOpenAI
+import google.generativeai as genai
 
 try:
     import resend
@@ -33,22 +36,8 @@ OUTPUT FORMAT (strict JSON):
 }"""
 
 
-async def generate_email(
-    account_brief: str,
-    signals: dict,
-    icp: str,
-    recipient_email: str,
-    gemini_key: str,
-) -> dict:
-    """Generate a hyper-personalized email using Gemini."""
-    if not gemini_key:
-        return {"error": "Gemini API key not configured"}
-
-    try:
-        genai.configure(api_key=gemini_key)
-        model = genai.GenerativeModel("gemini-2.0-flash")
-
-        user_prompt = f"""Generate a hyper-personalized outreach email based on this research.
+def _build_email_prompt(account_brief: str, signals: dict, icp: str, recipient_email: str) -> str:
+    return f"""Generate a hyper-personalized outreach email based on this research.
 
 ACCOUNT BRIEF:
 {account_brief}
@@ -65,37 +54,98 @@ RECIPIENT EMAIL:
 Generate a JSON response with "subject" and "body" keys. 
 The email MUST reference specific signals from the data above."""
 
-        response = model.generate_content(
-            [
-                {"role": "user", "parts": [{"text": EMAIL_SYSTEM_PROMPT}]},
-                {"role": "model", "parts": [{"text": '{"subject": "understood", "body": "I will generate a personalized email referencing real signals."}'}]},
-                {"role": "user", "parts": [{"text": user_prompt}]},
-            ]
-        )
 
-        raw_text = response.text.strip()
-        # Extract JSON from response (handle markdown code blocks)
-        if "```json" in raw_text:
-            raw_text = raw_text.split("```json")[1].split("```")[0].strip()
-        elif "```" in raw_text:
-            raw_text = raw_text.split("```")[1].split("```")[0].strip()
+def _parse_email_json(raw_text: str) -> dict:
+    """Parse email JSON from LLM response, handling markdown code blocks."""
+    text = raw_text.strip()
+    if "```json" in text:
+        text = text.split("```json")[1].split("```")[0].strip()
+    elif "```" in text:
+        text = text.split("```")[1].split("```")[0].strip()
 
-        email_data = json.loads(raw_text)
+    try:
+        email_data = json.loads(text)
         return {
             "subject": email_data.get("subject", ""),
             "body": email_data.get("body", ""),
             "status": "generated",
         }
-
     except json.JSONDecodeError:
-        # Fallback: try to extract subject and body manually
         return {
             "subject": "Personalized Outreach",
-            "body": raw_text,
+            "body": text,
             "status": "generated_fallback",
         }
-    except Exception as e:
-        return {"error": f"Email generation failed: {str(e)}"}
+
+
+async def _generate_email_claude(prompt: str, aiml_key: str, aiml_base_url: str, aiml_model: str) -> str:
+    """Generate email via Claude 3.5 Sonnet (AIML API)."""
+    client = AsyncOpenAI(api_key=aiml_key, base_url=aiml_base_url)
+
+    response = await client.chat.completions.create(
+        model=aiml_model,
+        messages=[
+            {"role": "system", "content": EMAIL_SYSTEM_PROMPT},
+            {"role": "user", "content": prompt},
+        ],
+        max_tokens=1024,
+        temperature=0.7,
+    )
+
+    return response.choices[0].message.content.strip()
+
+
+async def _generate_email_gemini(prompt: str, gemini_key: str) -> str:
+    """Fallback: Generate email via Google Gemini."""
+    genai.configure(api_key=gemini_key)
+    model = genai.GenerativeModel("gemini-2.0-flash")
+
+    response = model.generate_content(
+        [
+            {"role": "user", "parts": [{"text": EMAIL_SYSTEM_PROMPT}]},
+            {"role": "model", "parts": [{"text": '{"subject": "understood", "body": "I will generate a personalized email referencing real signals."}'}]},
+            {"role": "user", "parts": [{"text": prompt}]},
+        ]
+    )
+
+    return response.text.strip()
+
+
+async def generate_email(
+    account_brief: str,
+    signals: dict,
+    icp: str,
+    recipient_email: str,
+    aiml_key: str = "",
+    aiml_base_url: str = "https://api.aimlapi.com/v1",
+    aiml_model: str = "claude-3-5-sonnet-latest",
+    gemini_key: str = "",
+) -> dict:
+    """Generate a hyper-personalized email. Claude primary, Gemini fallback."""
+    prompt = _build_email_prompt(account_brief, signals, icp, recipient_email)
+    llm_used = ""
+
+    # Try primary: Claude via AIML API
+    if aiml_key:
+        try:
+            raw_text = await _generate_email_claude(prompt, aiml_key, aiml_base_url, aiml_model)
+            result = _parse_email_json(raw_text)
+            result["llm_used"] = "Claude 3.5 Sonnet (via AIML API)"
+            return result
+        except Exception as e:
+            print(f"⚠️ AIML API failed for email gen: {e}. Falling back to Gemini...")
+
+    # Fallback: Google Gemini
+    if gemini_key:
+        try:
+            raw_text = await _generate_email_gemini(prompt, gemini_key)
+            result = _parse_email_json(raw_text)
+            result["llm_used"] = "Google Gemini 2.0 Flash (fallback)"
+            return result
+        except Exception as e:
+            return {"error": f"Both LLMs failed. Last error: {str(e)}"}
+
+    return {"error": "No LLM API key configured. Set AIML_API_KEY or GEMINI_API_KEY in .env"}
 
 
 async def send_email(
@@ -154,12 +204,17 @@ async def tool_outreach_automated_sender(
     signals: dict,
     icp: str,
     recipient_email: str,
+    aiml_key: str = "",
+    aiml_base_url: str = "https://api.aimlapi.com/v1",
+    aiml_model: str = "claude-3-5-sonnet-latest",
     gemini_key: str = "",
     resend_key: str = "",
     sender_email: str = "onboarding@resend.dev",
 ) -> dict:
     """
     Full outreach tool: Generate email + Send it.
+    Primary LLM: Claude 3.5 Sonnet (AIML API)
+    Fallback LLM: Google Gemini (free)
     """
     # Step 1: Generate the email
     email = await generate_email(
@@ -167,6 +222,9 @@ async def tool_outreach_automated_sender(
         signals=signals,
         icp=icp,
         recipient_email=recipient_email,
+        aiml_key=aiml_key,
+        aiml_base_url=aiml_base_url,
+        aiml_model=aiml_model,
         gemini_key=gemini_key,
     )
 
@@ -181,5 +239,8 @@ async def tool_outreach_automated_sender(
         sender_email=sender_email,
         resend_key=resend_key,
     )
+
+    # Include which LLM was used
+    result["llm_used"] = email.get("llm_used", "unknown")
 
     return result

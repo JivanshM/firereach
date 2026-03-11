@@ -1,122 +1,145 @@
-# 🔥 FireReach — Autonomous Outreach Engine
+# FireReach  Autonomous Outreach Engine
 
-> An AI-powered agent that captures live buyer signals, generates research briefs, and sends hyper-personalized emails — all autonomously.
+> An AI-powered agent that captures **live buyer signals**, performs **independent web research**, generates **AI-driven Account Briefs**, and sends **hyper-personalized emails** — all autonomously.
 
 Built for the **Rabbitt AI** ecosystem.
 
+**Live Demo:** [https://firereach.vercel.app](https://firereach.vercel.app)
+
 ---
 
-## 🚀 Quick Start
+## Quick Start (One Click)
 
-### Prerequisites
-- Python 3.10+
-- Node.js 18+
-- API Keys (see below)
+**Windows:** Double-click `local.bat` — it installs dependencies, starts both servers, and opens your browser.
 
-### 1. Clone & Setup Backend
+### Manual Setup
 
-```bash
-git clone https://github.com/YOUR_USERNAME/firereach.git
+**Prerequisites:** Python 3.10+ | Node.js 18+
+
+`ash
+git clone https://github.com/JivanshM/firereach.git
 cd firereach
 
 # Backend
 cd backend
-python -m venv venv
-venv\Scripts\activate     # Windows
-# source venv/bin/activate  # Mac/Linux
 pip install -r requirements.txt
-
-# Create .env from example
-cp .env.example .env
-# Edit .env with your API keys
-```
-
-### 2. Setup Frontend
-
-```bash
-cd frontend
-npm install
-```
-
-### 3. Get API Keys
-
-| Service | Free Tier | Get Key |
-|---|---|---|
-| Google Gemini | Free tier available | [aistudio.google.com](https://aistudio.google.com/apikey) |
-| Finnhub | 60 calls/min | [finnhub.io](https://finnhub.io/) |
-| GNews | 100 req/day | [gnews.io](https://gnews.io/) |
-| Resend | 100 emails/day | [resend.com](https://resend.com/) |
-
-### 4. Run
-
-```bash
-# Terminal 1 — Backend
-cd backend
+cp .env.example .env        # then edit .env with your API keys
 python main.py
 
-# Terminal 2 — Frontend
+# Frontend (new terminal)
 cd frontend
+npm install
 npm run dev
-```
+`
 
 Open **http://localhost:5173**
 
 ---
 
-## 🏗️ Architecture
+## API Keys Required
 
-```
-Signal Capture (Deterministic) → Research Analysis (AI) → Email Generation & Send (AI + Execution)
-```
+| Service | Purpose | Free Tier | Get Key |
+|---------|---------|-----------|---------|
+| **AIML API** | LLM (GPT-4o) for research + email generation | Free tier | [aimlapi.com](https://aimlapi.com/) |
+| **Google Gemini** | Fallback LLM (Gemini 2.0 Flash) | 100% free | [aistudio.google.com](https://aistudio.google.com/apikey) |
+| **Finnhub** | Financial signals, company profiles | 60 calls/min | [finnhub.io](https://finnhub.io/register) |
+| **GNews** | Latest company news articles | 100 req/day | [gnews.io](https://gnews.io/) |
+| **Resend** | Automated email sending | 100 emails/day | [resend.com](https://resend.com/signup) |
 
-**3 Tools:**
-1. **`tool_signal_harvester`** — Fetches financial, hiring, news, and tech stack signals via APIs
-2. **`tool_research_analyst`** — AI generates a 2-paragraph Account Brief with pain points
-3. **`tool_outreach_automated_sender`** — AI writes a personalized email and sends it via Resend
-
-See [DOCS.md](./DOCS.md) for full documentation.
-
----
-
-## 📂 Project Structure
-
-```
-├── backend/
-│   ├── main.py              # FastAPI server
-│   ├── agent.py             # Agentic orchestrator
-│   ├── config.py            # Environment config
-│   └── tools/
-│       ├── signal_harvester.py
-│       ├── research_analyst.py
-│       └── outreach_sender.py
-├── frontend/
-│   ├── src/
-│   │   ├── App.jsx          # React dashboard
-│   │   └── index.css        # Design system
-│   └── package.json
-├── DOCS.md                  # Agent documentation
-└── README.md
-```
+**No API key needed for:** DuckDuckGo web search, company website scraping, Greenhouse/Lever ATS hiring data, tech stack detection.
 
 ---
 
-## 🧪 Test with Challenge Prompt
+## Architecture
 
-**ICP:** "We sell high-end cybersecurity training to Series B startups."  
-**Task:** Find companies with recent growth signals and send a personalized outreach email.
+`
+User Input (ICP + Company + Email)
+        |
+        v
++------------------------------+
+|  1. tool_signal_harvester    |  Deterministic (API-based)
+|     - Finnhub (financial)    |
+|     - ATS endpoints (hiring) |
+|     - GNews (news/events)    |
+|     - HTTP inspection (tech) |
++-------------|----------------+
+              | Structured signals JSON
+              v
++------------------------------+
+|  2. tool_research_analyst    |  AI + Active Web Research
+|     - DuckDuckGo search      |
+|     - Company site scraping  |
+|     - Cross-references all   |
+|       data with ICP          |
+|     - Generates Account Brief|
++-------------|----------------+
+              | 2-paragraph Account Brief
+              v
++------------------------------+
+|  3. tool_outreach_sender     |  AI + Automated Execution
+|     - Generates email (AI)   |
+|     - References live signals|
+|     - Sends via Resend API   |
++------------------------------+
+`
+
+**Key Design Principles:**
+- **Signal -> Research -> Send** — The agent never sends without researching first
+- **Active Web Research** — Tool 2 performs its own DuckDuckGo searches and website scraping
+- **Zero-Template Policy** — Every email explicitly references captured signals
+- **Deterministic Signals** — Tool 1 uses only API data, the LLM cannot guess signals
+- **Automated Execution** — Send is triggered automatically once research is complete
 
 ---
 
-## 🛠️ Tech Stack
+## Project Structure
 
-- **Backend:** FastAPI + Python 3.10+
-- **Frontend:** Vite + React
-- **LLM:** Google Gemini 2.0 Flash
-- **Email:** Resend API
-- **Signal APIs:** Finnhub, GNews, Greenhouse/Lever ATS
+`
+firereach/
++-- backend/
+|   +-- main.py                 # FastAPI server + SSE streaming
+|   +-- agent.py                # Agentic orchestrator (3-tool pipeline)
+|   +-- config.py               # Environment config loader
+|   +-- tools/
+|   |   +-- signal_harvester.py # Tool 1: Deterministic signal capture
+|   |   +-- research_analyst.py # Tool 2: Web research + AI analysis
+|   |   +-- outreach_sender.py  # Tool 3: Email gen + Resend dispatch
+|   +-- requirements.txt
+|   +-- .env.example
++-- frontend/
+|   +-- src/
+|   |   +-- App.jsx             # React dashboard with SSE streaming
+|   |   +-- index.css           # Premium design system
+|   +-- package.json
+|   +-- vite.config.js          # Dev proxy to backend
++-- DOCS.md                     # Agent documentation (tool schemas, prompts)
++-- local.bat                   # One-click Windows launcher
++-- README.md
+`
 
 ---
 
-## 📄 License
+## The Rabbitt Challenge Prompt
+
+**ICP:** `We sell high-end cybersecurity training to Series B startups.`
+**Task:** `Find companies with recent growth signals and send a personalized outreach email to [candidate-email-here] that connects their expansion to our security training.`
+
+---
+
+## Tech Stack
+
+| Layer | Technology |
+|-------|-----------|
+| **Backend** | FastAPI (Python) with async tool execution |
+| **Frontend** | Vite + React with SSE streaming |
+| **Primary LLM** | GPT-4o via AIML API |
+| **Fallback LLM** | Google Gemini 2.0 Flash |
+| **Web Research** | DuckDuckGo search + BeautifulSoup scraping |
+| **Email** | Resend API |
+| **Signal APIs** | Finnhub, GNews, Greenhouse/Lever ATS |
+
+---
+
+## License
 
 MIT

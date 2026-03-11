@@ -1,4 +1,7 @@
 @echo off
+:: Fix working directory to bat file location (critical for double-click)
+cd /d "%~dp0"
+
 title FireReach - Autonomous Outreach Engine
 color 0C
 
@@ -13,10 +16,11 @@ echo.
 if not exist "backend\.env" (
     echo [!] backend\.env not found!
     echo [!] Creating from .env.example...
-    copy backend\.env.example backend\.env
+    copy "backend\.env.example" "backend\.env"
     echo.
     echo  YOU MUST edit backend\.env with your API keys before running:
     echo.
+    echo    AIML_API_KEY      - https://aimlapi.com/
     echo    GEMINI_API_KEY    - https://aistudio.google.com/apikey
     echo    FINNHUB_API_KEY   - https://finnhub.io/register
     echo    GNEWS_API_KEY     - https://gnews.io/
@@ -27,25 +31,13 @@ if not exist "backend\.env" (
     exit /b 1
 )
 
-:: Check for required keys in .env
-findstr /C:"your_gemini_api_key_here" backend\.env >nul 2>&1
-if %errorlevel%==0 (
-    echo [!] WARNING: GEMINI_API_KEY is still set to placeholder!
-    echo [!] Edit backend\.env with your real API keys first.
-    echo.
-    pause
-    exit /b 1
-)
-
 echo [1/3] Installing backend dependencies...
-cd backend
-pip install -r requirements.txt -q 2>nul
-cd ..
+python -m pip install -r "%~dp0backend\requirements.txt" -q --disable-pip-version-check 2>nul
 
 echo [2/3] Installing frontend dependencies...
-cd frontend
+cd /d "%~dp0frontend"
 call npm install --silent 2>nul
-cd ..
+cd /d "%~dp0"
 
 echo [3/3] Starting servers...
 echo.
@@ -65,7 +57,7 @@ timeout /t 3 /nobreak >nul
 start "FireReach Frontend" cmd /k "cd /d %~dp0frontend && npm run dev"
 
 :: Wait then open browser
-timeout /t 4 /nobreak >nul
+timeout /t 5 /nobreak >nul
 start http://localhost:5173
 
 echo.

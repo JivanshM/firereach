@@ -1,0 +1,28 @@
+services:
+  - type: web
+    name: firereach-api
+    runtime: python
+    rootDir: backend
+    buildCommand: pip install -r requirements.txt
+    startCommand: python main.py
+    envVars:
+      - key: AIML_API_KEY
+        sync: false
+      - key: AIML_BASE_URL
+        value: https://api.aimlapi.com/v1
+      - key: AIML_MODEL
+        value: gpt-4o
+      - key: GEMINI_API_KEY
+        sync: false
+      - key: FINNHUB_API_KEY
+        sync: false
+      - key: GNEWS_API_KEY
+        sync: false
+      - key: RESEND_API_KEY
+        sync: false
+      - key: SENDER_EMAIL
+        sync: false
+      - key: FRONTEND_URL
+        value: https://firereach.vercel.app
+      - key: RENDER
+        value: "true"

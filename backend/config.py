@@ -3,7 +3,7 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-# LLM — Primary: Claude 3.5 Sonnet via AIML API
+# LLM — Primary: GPT-4o via AIML API
 AIML_API_KEY = os.getenv("AIML_API_KEY", "")
 AIML_BASE_URL = os.getenv("AIML_BASE_URL", "https://api.aimlapi.com/v1")
 AIML_MODEL = os.getenv("AIML_MODEL", "gpt-4o")
@@ -21,5 +21,5 @@ SENDER_EMAIL = os.getenv("SENDER_EMAIL", "onboarding@resend.dev")
 
 # App
 APP_HOST = os.getenv("APP_HOST", "0.0.0.0")
-APP_PORT = int(os.getenv("APP_PORT", "8000"))
+APP_PORT = int(os.getenv("PORT", os.getenv("APP_PORT", "8000")))
 FRONTEND_URL = os.getenv("FRONTEND_URL", "http://localhost:5173")

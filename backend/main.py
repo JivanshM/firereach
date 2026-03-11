@@ -165,4 +165,6 @@ async def run_outreach_stream(request: OutreachRequest):
 
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run("main:app", host=APP_HOST, port=int(APP_PORT), reload=True)
+    import os as _os
+    is_dev = _os.getenv("RENDER") is None
+    uvicorn.run("main:app", host=APP_HOST, port=int(APP_PORT), reload=is_dev)

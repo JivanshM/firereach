@@ -5,7 +5,7 @@
   "rewrites": [
     {
       "source": "/api/:path*",
-      "destination": "https://firereach-api.onrender.com/api/:path*"
+      "destination": "https://firereach-api-zq5a.onrender.com/api/:path*"
     }
   ]
 }

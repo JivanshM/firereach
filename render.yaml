@@ -23,6 +23,6 @@ services:
       - key: SENDER_EMAIL
         sync: false
       - key: FRONTEND_URL
-        value: https://firereach.vercel.app
+        value: https://frontend-kappa-self-80.vercel.app
       - key: RENDER
         value: "true"

@@ -1,6 +1,6 @@
 services:
   - type: web
-    name: firereach-api
+    name: reachai-api
     runtime: python
     rootDir: backend
     buildCommand: pip install -r requirements.txt
@@ -17,10 +17,6 @@ services:
       - key: FINNHUB_API_KEY
         sync: false
       - key: GNEWS_API_KEY
-        sync: false
-      - key: BREVO_API_KEY
-        sync: false
-      - key: SENDER_EMAIL
         sync: false
       - key: FRONTEND_URL
         value: https://frontend-kappa-self-80.vercel.app

@@ -2,17 +2,17 @@
 :: Fix working directory to bat file location (critical for double-click)
 cd /d "%~dp0"
 
-title FireReach - Autonomous Outreach Engine
+title ReachAI - Autonomous Outreach Engine
 color 0C
 
 echo.
 echo  ========================================
-echo    FIREREACH - Autonomous Outreach Engine
-echo    Rabbitt AI Ecosystem
+echo    REACHAI - Autonomous Outreach Engine
+echo    Powered by AI
 echo  ========================================
 echo.
 
-:: Check if .env exists
+:: Check if backend .env exists
 if not exist "backend\.env" (
     echo [!] backend\.env not found!
     echo [!] Creating from .env.example...
@@ -24,9 +24,25 @@ if not exist "backend\.env" (
     echo    GEMINI_API_KEY    - https://aistudio.google.com/apikey
     echo    FINNHUB_API_KEY   - https://finnhub.io/register
     echo    GNEWS_API_KEY     - https://gnews.io/
-    echo    RESEND_API_KEY    - https://resend.com/signup
     echo.
     echo  Open backend\.env in your editor, add the keys, then run this again.
+    pause
+    exit /b 1
+)
+
+:: Check if frontend .env exists
+if not exist "frontend\.env" (
+    echo [!] frontend\.env not found!
+    echo [!] Creating from .env.example...
+    copy "frontend\.env.example" "frontend\.env"
+    echo.
+    echo  YOU MUST edit frontend\.env with your EmailJS keys:
+    echo.
+    echo    VITE_EMAILJS_SERVICE_ID
+    echo    VITE_EMAILJS_TEMPLATE_ID
+    echo    VITE_EMAILJS_PUBLIC_KEY
+    echo.
+    echo  Get keys from https://emailjs.com then run this again.
     pause
     exit /b 1
 )
@@ -48,19 +64,19 @@ echo  Press Ctrl+C in either window to stop.
 echo.
 
 :: Start backend in a new window
-start "FireReach Backend" cmd /k "cd /d %~dp0backend && python main.py"
+start "ReachAI Backend" cmd /k "cd /d %~dp0backend && python main.py"
 
 :: Wait a moment for backend to boot
 timeout /t 3 /nobreak >nul
 
 :: Start frontend in a new window
-start "FireReach Frontend" cmd /k "cd /d %~dp0frontend && npm run dev"
+start "ReachAI Frontend" cmd /k "cd /d %~dp0frontend && npm run dev"
 
 :: Wait then open browser
 timeout /t 5 /nobreak >nul
 start http://localhost:5173
 
 echo.
-echo  FireReach is running! Browser should open shortly.
+echo  ReachAI is running! Browser should open shortly.
 echo  Close this window or press any key to exit this launcher.
 pause >nul

@@ -1,5 +1,5 @@
 """
-FireReach Agent Orchestrator
+ReachAI Agent Orchestrator
 Implements sequential function-calling: Signal Capture → Research → Automated Delivery.
 Primary LLM: GPT-4o via AIML API
 Fallback LLM: Google Gemini (free tier)
@@ -12,11 +12,11 @@ from config import (
     AIML_API_KEY, AIML_BASE_URL, AIML_MODEL,
     GEMINI_API_KEY,
     FINNHUB_API_KEY, GNEWS_API_KEY,
-    BREVO_API_KEY, SENDER_EMAIL,
 )
 
 
 async def run_agent_pipeline(
+    sender_name: str,
     icp: str,
     company: str,
     domain: str,
@@ -24,7 +24,7 @@ async def run_agent_pipeline(
     on_step: callable = None,
 ) -> dict:
     """
-    Run the full FireReach agentic pipeline.
+    Run the full ReachAI agentic pipeline.
     
     Sequential flow:
     1. tool_signal_harvester → deterministic data fetching
@@ -96,6 +96,7 @@ async def run_agent_pipeline(
         await on_step("outreach_sender", step3)
 
     outreach_result = await tool_outreach_automated_sender(
+        sender_name=sender_name,
         account_brief=research_result.get("account_brief", ""),
         signals=signals_result.get("signals", {}),
         icp=icp,
@@ -104,8 +105,6 @@ async def run_agent_pipeline(
         aiml_base_url=AIML_BASE_URL,
         aiml_model=AIML_MODEL,
         gemini_key=GEMINI_API_KEY,
-        brevo_key=BREVO_API_KEY,
-        sender_email=SENDER_EMAIL,
     )
 
     step3["status"] = "completed"

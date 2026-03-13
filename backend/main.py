@@ -1,5 +1,5 @@
 """
-FireReach Backend API Server
+ReachAI Backend API Server
 FastAPI application with endpoints for the autonomous outreach engine.
 """
 
@@ -17,13 +17,13 @@ from agent import run_agent_pipeline
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    print("🐇 FireReach is starting up...")
+    print("✨ ReachAI is starting up...")
     yield
-    print("🐇 FireReach is shutting down...")
+    print("✨ ReachAI is shutting down...")
 
 
 app = FastAPI(
-    title="FireReach — Autonomous Outreach Engine",
+    title="ReachAI — Autonomous Outreach Engine",
     description="An AI-powered agent that captures buyer signals, generates research, and sends personalized outreach.",
     version="1.0.0",
     lifespan=lifespan,
@@ -40,6 +40,7 @@ app.add_middleware(
 
 
 class OutreachRequest(BaseModel):
+    sender_name: str
     icp: str
     company: str
     domain: str = ""
@@ -56,7 +57,7 @@ class HealthResponse(BaseModel):
 async def health():
     return HealthResponse(
         status="healthy",
-        service="FireReach Autonomous Outreach Engine",
+        service="ReachAI Autonomous Outreach Engine",
         version="1.0.0",
     )
 
@@ -64,11 +65,12 @@ async def health():
 @app.post("/api/outreach")
 async def run_outreach(request: OutreachRequest):
     """
-    Run the full FireReach outreach pipeline.
+    Run the full ReachAI outreach pipeline.
     Sequential flow: Signal Capture → Research → Automated Email.
     """
     try:
         result = await run_agent_pipeline(
+            sender_name=request.sender_name,
             icp=request.icp,
             company=request.company,
             domain=request.domain,
@@ -102,7 +104,7 @@ async def run_outreach_stream(request: OutreachRequest):
         from tools.signal_harvester import tool_signal_harvester
         from tools.research_analyst import tool_research_analyst
         from tools.outreach_sender import tool_outreach_automated_sender
-        from config import AIML_API_KEY, AIML_BASE_URL, AIML_MODEL, GEMINI_API_KEY, FINNHUB_API_KEY, GNEWS_API_KEY, BREVO_API_KEY, SENDER_EMAIL
+        from config import AIML_API_KEY, AIML_BASE_URL, AIML_MODEL, GEMINI_API_KEY, FINNHUB_API_KEY, GNEWS_API_KEY
 
         # Step 1
         yield f"data: {json.dumps({'step': 'signal_harvester', 'status': 'running', 'description': 'Capturing live buyer signals...'})}\n\n"
@@ -133,9 +135,10 @@ async def run_outreach_stream(request: OutreachRequest):
         yield f"data: {json.dumps({'step': 'research_analyst', 'status': 'completed', 'data': research_result}, default=str)}\n\n"
 
         # Step 3
-        yield f"data: {json.dumps({'step': 'outreach_sender', 'status': 'running', 'description': 'Generating and sending personalized email...'})}\n\n"
+        yield f"data: {json.dumps({'step': 'outreach_sender', 'status': 'running', 'description': 'Generating personalized email...'})}\n\n"
 
         outreach_result = await tool_outreach_automated_sender(
+            sender_name=request.sender_name,
             account_brief=research_result.get("account_brief", ""),
             signals=signals_result.get("signals", {}),
             icp=request.icp,
@@ -144,8 +147,6 @@ async def run_outreach_stream(request: OutreachRequest):
             aiml_base_url=AIML_BASE_URL,
             aiml_model=AIML_MODEL,
             gemini_key=GEMINI_API_KEY,
-            brevo_key=BREVO_API_KEY,
-            sender_email=SENDER_EMAIL,
         )
 
         yield f"data: {json.dumps({'step': 'outreach_sender', 'status': 'completed', 'data': outreach_result}, default=str)}\n\n"

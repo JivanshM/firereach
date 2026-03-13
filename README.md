@@ -1,10 +1,6 @@
-# FireReach  Autonomous Outreach Engine
+# ReachAI  Autonomous Outreach Engine
 
-> An AI-powered agent that captures **live buyer signals**, performs **independent web research**, generates **AI-driven Account Briefs**, and sends **hyper-personalized emails** — all autonomously.
-
-Built for the **Rabbitt AI** ecosystem.
-
-**Live Demo:** [https://firereach.vercel.app](https://firereach.vercel.app)
+> An AI-powered agent that captures **live buyer signals**, performs **independent web research**, generates **AI-driven Account Briefs**, and prepares **hyper-personalized emails** — sent directly from your browser.
 
 ---
 
@@ -17,8 +13,8 @@ Built for the **Rabbitt AI** ecosystem.
 **Prerequisites:** Python 3.10+ | Node.js 18+
 
 `ash
-git clone https://github.com/JivanshM/firereach.git
-cd firereach
+git clone https://github.com/YourRepo/reachai.git
+cd reachai
 
 # Backend
 cd backend
@@ -44,7 +40,7 @@ Open **http://localhost:5173**
 | **Google Gemini** | Fallback LLM (Gemini 2.0 Flash) | 100% free | [aistudio.google.com](https://aistudio.google.com/apikey) |
 | **Finnhub** | Financial signals, company profiles | 60 calls/min | [finnhub.io](https://finnhub.io/register) |
 | **GNews** | Latest company news articles | 100 req/day | [gnews.io](https://gnews.io/) |
-| **Resend** | Automated email sending | 100 emails/day | [resend.com](https://resend.com/signup) |
+| **EmailJS** | Client-side email dispatch (configure in frontend) | 200 emails/mo | [emailjs.com](https://www.emailjs.com/) |
 
 **No API key needed for:** DuckDuckGo web search, company website scraping, Greenhouse/Lever ATS hiring data, tech stack detection.
 
@@ -76,11 +72,13 @@ User Input (ICP + Company + Email)
               | 2-paragraph Account Brief
               v
 +------------------------------+
-|  3. tool_outreach_sender     |  AI + Automated Execution
+|  3. tool_outreach_sender     |  AI Generation
 |     - Generates email (AI)   |
 |     - References live signals|
-|     - Sends via Resend API   |
-+------------------------------+
+|     - Returned to Frontend   |
++-------------|----------------+
+              | Sends via EmailJS (Client-Side)
+              v
 `
 
 **Key Design Principles:**
@@ -135,7 +133,7 @@ firereach/
 | **Primary LLM** | GPT-4o via AIML API |
 | **Fallback LLM** | Google Gemini 2.0 Flash |
 | **Web Research** | DuckDuckGo search + BeautifulSoup scraping |
-| **Email** | Resend API |
+| **Email** | EmailJS (Client-side) |
 | **Signal APIs** | Finnhub, GNews, Greenhouse/Lever ATS |
 
 ---

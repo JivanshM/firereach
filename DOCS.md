@@ -1,8 +1,8 @@
-# FireReach — Agent Documentation
+# ReachAI — Agent Documentation
 
 ## Overview
 
-FireReach is an autonomous outreach engine built for the Rabbitt AI ecosystem. It captures live buyer signals, generates AI-powered research briefs, and automatically sends hyper-personalized emails — all through a sequential agentic pipeline.
+ReachAI is an autonomous outreach engine. It captures live buyer signals, generates AI-powered research briefs, and generates hyper-personalized emails that are dispatched via the browser.
 
 ---
 
@@ -34,11 +34,14 @@ User Input (ICP + Company + Email)
               │ 2-paragraph Account Brief
               ▼
 ┌──────────────────────────────┐
-│  3. tool_outreach_sender     │  ← AI + Automated Execution
+│  3. tool_outreach_sender     │  ← AI Generation
 │     - Generates email (AI)   │
 │     - References live signals│
-│     - Sends via Resend API   │
-└──────────────────────────────┘
+│     - Returns to frontend    │
+└─────────────┬────────────────┘
+              │ 
+              ▼
+   (Frontend dispatches via EmailJS)
 ```
 
 **Key Design Principles:**
@@ -121,8 +124,8 @@ User Input (ICP + Company + Email)
 
 ### 3. `tool_outreach_automated_sender`
 
-**Type:** AI + Execution  
-**Purpose:** Generate a hyper-personalized email and send it.
+**Type:** AI Generation  
+**Purpose:** Generate a hyper-personalized email.
 
 ```json
 {
@@ -132,12 +135,10 @@ User Input (ICP + Company + Email)
     "signals": { "type": "object", "description": "From tool_signal_harvester" },
     "icp": { "type": "string", "description": "User's ICP" },
     "recipient_email": { "type": "string", "description": "Target email" },
-    "gemini_key": { "type": "string" },
-    "resend_key": { "type": "string" },
-    "sender_email": { "type": "string" }
+    "gemini_key": { "type": "string" }
   },
   "returns": {
-    "status": "sent | skipped | error",
+    "status": "completed | error",
     "subject": "string",
     "body": "string",
     "message": "string"
@@ -154,7 +155,7 @@ User Input (ICP + Company + Email)
 
 ### Research Analyst Persona
 ```
-You are an elite B2B account research analyst at FireReach.
+You are an elite B2B account research analyst at ReachAI.
 Your job is to analyze raw buyer signals and create a concise, actionable Account Brief.
 
 RULES:
@@ -168,7 +169,7 @@ RULES:
 
 ### Outreach Email Persona
 ```
-You are an elite B2B copywriter at FireReach.
+You are an elite B2B copywriter at ReachAI.
 
 STRICT RULES:
 1. ZERO TEMPLATES: Never use generic openings.
@@ -188,5 +189,5 @@ STRICT RULES:
 - **Primary LLM:** GPT-4o via AIML API
 - **Fallback LLM:** Google Gemini 2.0 Flash
 - **Web Research:** DuckDuckGo search + BeautifulSoup scraping
-- **Email:** Resend API (100 free emails/day)
+- **Email:** EmailJS (client-side)
 - **Signal APIs:** Finnhub, GNews, direct ATS endpoints (Greenhouse, Lever)

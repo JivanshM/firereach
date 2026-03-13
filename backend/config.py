@@ -15,10 +15,6 @@ GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "")
 FINNHUB_API_KEY = os.getenv("FINNHUB_API_KEY", "")
 GNEWS_API_KEY = os.getenv("GNEWS_API_KEY", "")
 
-# Email Sending (Brevo / Sendinblue)
-BREVO_API_KEY = os.getenv("BREVO_API_KEY", "")
-SENDER_EMAIL = os.getenv("SENDER_EMAIL", "firereach@example.com")
-
 # App
 APP_HOST = os.getenv("APP_HOST", "0.0.0.0")
 APP_PORT = int(os.getenv("PORT", os.getenv("APP_PORT", "8000")))

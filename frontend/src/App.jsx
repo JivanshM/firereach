@@ -1,15 +1,30 @@
 import { useState } from 'react';
+import emailjs from '@emailjs/browser';
 
 const API_BASE = import.meta.env.PROD ? '' : '';
 
+// ══════════════════════════════════════════════════════════
+// EmailJS — Safe Configuration via Environment Variables
+// Create a .env file in the frontend/ folder with:
+//   VITE_EMAILJS_SERVICE_ID=service_xxxxxx
+//   VITE_EMAILJS_TEMPLATE_ID=template_xxxxxx
+//   VITE_EMAILJS_PUBLIC_KEY=xxxxxxxxx
+// ══════════════════════════════════════════════════════════
+const EMAILJS_SERVICE_ID = import.meta.env.VITE_EMAILJS_SERVICE_ID || '';
+const EMAILJS_TEMPLATE_ID = import.meta.env.VITE_EMAILJS_TEMPLATE_ID || '';
+const EMAILJS_PUBLIC_KEY = import.meta.env.VITE_EMAILJS_PUBLIC_KEY || '';
+
+const EMAILJS_CONFIGURED = EMAILJS_SERVICE_ID && EMAILJS_TEMPLATE_ID && EMAILJS_PUBLIC_KEY;
+
 const STEP_META = {
   signal_harvester: { icon: '📡', title: 'Signal Capture', desc: 'Fetching live buyer signals from Finnhub, ATS, GNews...' },
-  research_analyst: { icon: '🔬', title: 'Research Analysis', desc: 'AI analyzing signals & generating Account Brief...' },
-  outreach_sender: { icon: '📧', title: 'Outreach Delivery', desc: 'Generating personalized email & sending...' },
+  research_analyst: { icon: '🔬', title: 'Deep Research', desc: 'AI analyzing signals & generating Account Brief...' },
+  outreach_sender: { icon: '📧', title: 'Email Generation', desc: 'Crafting hyper-personalized outreach email...' },
 };
 
 export default function App() {
   const [form, setForm] = useState({
+    sender_name: '',
     icp: '',
     company: '',
     domain: '',
@@ -29,7 +44,6 @@ export default function App() {
     setError('');
     setExpandedSteps({});
 
-    // Initialize steps as pending
     setSteps([
       { key: 'signal_harvester', status: 'pending', data: null },
       { key: 'research_analyst', status: 'pending', data: null },
@@ -72,16 +86,12 @@ export default function App() {
               setSteps((prev) =>
                 prev.map((s) =>
                   s.key === event.step
-                    ? {
-                        ...s,
-                        status: event.status,
-                        data: event.data || s.data,
-                      }
+                    ? { ...s, status: event.status, data: event.data || s.data }
                     : s
                 )
               );
 
-              // Capture final results
+              // Capture Account Brief
               if (event.step === 'research_analyst' && event.status === 'completed') {
                 setResult((prev) => ({
                   ...prev,
@@ -89,17 +99,62 @@ export default function App() {
                 }));
               }
 
+              // Capture generated email & dispatch via EmailJS
               if (event.step === 'outreach_sender' && event.status === 'completed') {
+                const generatedSubject = event.data?.subject || '';
+                const generatedBody = event.data?.body || '';
+
                 setResult((prev) => ({
                   ...prev,
-                  emailSubject: event.data?.subject || '',
-                  emailBody: event.data?.body || '',
-                  emailStatus: event.data?.status || 'unknown',
-                  emailMessage: event.data?.message || '',
+                  emailSubject: generatedSubject,
+                  emailBody: generatedBody,
+                  emailStatus: 'sending',
+                  emailMessage: 'Dispatching via EmailJS...',
                 }));
+
+                if (!EMAILJS_CONFIGURED) {
+                  setResult((prev) => ({
+                    ...prev,
+                    emailStatus: 'skipped',
+                    emailMessage:
+                      'Email generated successfully! Configure VITE_EMAILJS_* variables in frontend/.env to enable automatic sending.',
+                  }));
+                } else {
+                  try {
+                    const templateParams = {
+                      to_email: form.recipient_email,
+                      subject: generatedSubject,
+                      body: generatedBody,
+                    };
+
+                    emailjs
+                      .send(EMAILJS_SERVICE_ID, EMAILJS_TEMPLATE_ID, templateParams, EMAILJS_PUBLIC_KEY)
+                      .then(() => {
+                        setResult((prev) => ({
+                          ...prev,
+                          emailStatus: 'sent',
+                          emailMessage: 'Email sent successfully via EmailJS!',
+                        }));
+                      })
+                      .catch((err) => {
+                        console.error('EmailJS Error:', err);
+                        setResult((prev) => ({
+                          ...prev,
+                          emailStatus: 'error',
+                          emailMessage: `Failed to send: ${err.text || err.message || 'Unknown error'}`,
+                        }));
+                      });
+                  } catch (err) {
+                    setResult((prev) => ({
+                      ...prev,
+                      emailStatus: 'error',
+                      emailMessage: `EmailJS Error: ${err.message}`,
+                    }));
+                  }
+                }
               }
-            } catch (err) {
-              // Skip malformed events
+            } catch {
+              // Skip malformed SSE events
             }
           }
         }
@@ -115,35 +170,37 @@ export default function App() {
     setExpandedSteps((prev) => ({ ...prev, [key]: !prev[key] }));
   };
 
-  const getIndicatorClass = (status) => {
-    return `step__indicator step__indicator--${status}`;
-  };
+  const getIndicatorClass = (status) => `step__indicator step__indicator--${status}`;
 
   const getIndicatorSymbol = (status) => {
     switch (status) {
-      case 'running': return '⟳';
-      case 'completed': return '✓';
-      case 'error': return '✗';
-      default: return '·';
+      case 'running':
+        return '⟳';
+      case 'completed':
+        return '✓';
+      case 'error':
+        return '✗';
+      default:
+        return '·';
     }
   };
 
   return (
     <div className="app-container">
-      {/* Header */}
+      {/* ── Header ── */}
       <header className="header">
         <div className="header__logo">
-          <div className="header__icon">🔥</div>
-          <h1 className="header__title">FireReach</h1>
+          <div className="header__icon">⚡</div>
+          <h1 className="header__title">ReachAI</h1>
         </div>
         <p className="header__subtitle">
-          Autonomous outreach engine that captures live buyer signals,
-          generates research briefs, and sends hyper-personalized emails.
+          Autonomous outreach engine — capture live buyer signals, generate
+          research briefs, and send hyper-personalized emails with AI.
         </p>
-        <span className="header__badge">Rabbitt AI Ecosystem</span>
+        <span className="header__badge">AI-Powered Outreach</span>
       </header>
 
-      {/* Input Form */}
+      {/* ── Configure Outreach Form ── */}
       <section className="card" style={{ marginBottom: '2rem' }}>
         <div className="card__title">
           <span className="card__title-icon">🎯</span>
@@ -152,6 +209,20 @@ export default function App() {
 
         <form onSubmit={handleSubmit}>
           <div className="form-grid">
+            <div className="form-group form-group--full">
+              <label className="form-label" htmlFor="sender_name">
+                Your Name
+              </label>
+              <input
+                id="sender_name"
+                className="form-input"
+                placeholder="e.g. Jasleen Bhullar"
+                value={form.sender_name}
+                onChange={(e) => setForm({ ...form, sender_name: e.target.value })}
+                required
+              />
+            </div>
+
             <div className="form-group form-group--full">
               <label className="form-label" htmlFor="icp">
                 Ideal Customer Profile (ICP)
@@ -211,18 +282,14 @@ export default function App() {
             </div>
           </div>
 
-          <button
-            className="btn-primary"
-            type="submit"
-            disabled={loading}
-          >
+          <button className="btn-primary" type="submit" disabled={loading}>
             {loading && <span className="spinner" />}
-            {loading ? 'Agent Running...' : '🚀 Launch Outreach Agent'}
+            {loading ? 'Agent Running…' : '🚀 Launch Outreach Agent'}
           </button>
         </form>
       </section>
 
-      {/* Pipeline Steps */}
+      {/* ── Pipeline Timeline ── */}
       {steps.length > 0 && (
         <section className="pipeline card">
           <div className="card__title">
@@ -231,7 +298,7 @@ export default function App() {
           </div>
 
           <div className="pipeline__steps">
-            {steps.map((step, idx) => {
+            {steps.map((step) => {
               const meta = STEP_META[step.key] || {};
               return (
                 <div
@@ -251,29 +318,31 @@ export default function App() {
                         ? 'Completed successfully'
                         : step.status === 'running'
                         ? meta.desc
-                        : 'Waiting...'}
+                        : 'Waiting…'}
                     </div>
 
                     {step.data && step.status === 'completed' && (
                       <div className="step__data">
-                        {/* Signal tags for harvester */}
+                        {/* Signal tags */}
                         {step.key === 'signal_harvester' && step.data?.signals && (
                           <div className="signal-tags">
-                            {Object.entries(step.data.signals).map(([key, val]) => {
-                              const hasData =
-                                val?.data &&
-                                (typeof val.data === 'object'
-                                  ? !val.data.error && !val.data.note
-                                  : true);
-                              return (
-                                <span
-                                  key={key}
-                                  className={`signal-tag ${hasData ? 'signal-tag--has-data' : ''}`}
-                                >
-                                  {hasData ? '●' : '○'} {key}
-                                </span>
-                              );
-                            })}
+                            {Object.entries(step.data.signals).map(
+                              ([key, val]) => {
+                                const hasData =
+                                  val?.data &&
+                                  (typeof val.data === 'object'
+                                    ? !val.data.error && !val.data.note
+                                    : true);
+                                return (
+                                  <span
+                                    key={key}
+                                    className={`signal-tag ${hasData ? 'signal-tag--has-data' : ''}`}
+                                  >
+                                    {hasData ? '●' : '○'} {key}
+                                  </span>
+                                );
+                              }
+                            )}
                           </div>
                         )}
 
@@ -302,10 +371,9 @@ export default function App() {
         </section>
       )}
 
-      {/* Results */}
+      {/* ── Results ── */}
       {result && (
         <section className="result-section">
-          {/* Account Brief */}
           {result.accountBrief && (
             <div className="result-card result-card--brief">
               <div className="result-card__header">🔬 Account Brief</div>
@@ -313,7 +381,6 @@ export default function App() {
             </div>
           )}
 
-          {/* Email */}
           {result.emailBody && (
             <div className="result-card result-card--email">
               <div className="result-card__header">
@@ -336,7 +403,7 @@ export default function App() {
                   style={{
                     marginTop: '1rem',
                     fontSize: '0.8rem',
-                    color: 'var(--text-muted)',
+                    color: 'var(--text-tertiary)',
                   }}
                 >
                   {result.emailMessage}
@@ -347,33 +414,19 @@ export default function App() {
         </section>
       )}
 
-      {/* Error */}
+      {/* ── Error ── */}
       {error && (
-        <div
-          className="card"
-          style={{
-            marginTop: '2rem',
-            borderColor: 'var(--error)',
-            color: 'var(--error)',
-          }}
-        >
-          <strong>Error:</strong> {error}
+        <div className="error-card">
+          <span className="error-card__icon">⚠️</span>
+          <span>
+            <strong>Error:</strong> {error}
+          </span>
         </div>
       )}
 
-      {/* Footer */}
+      {/* ── Footer ── */}
       <footer className="footer">
-        <p>
-          Built with 🔥 for the{' '}
-          <a
-            href="https://rabbitt.ai"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Rabbitt AI
-          </a>{' '}
-          Ecosystem
-        </p>
+        <p>ReachAI — Built for the modern sales team</p>
       </footer>
     </div>
   );

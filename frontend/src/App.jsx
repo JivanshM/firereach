@@ -216,7 +216,7 @@ export default function App() {
               <input
                 id="sender_name"
                 className="form-input"
-                placeholder="e.g. Jasleen Bhullar"
+                placeholder="e.g. Jane Doe"
                 value={form.sender_name}
                 onChange={(e) => setForm({ ...form, sender_name: e.target.value })}
                 required
